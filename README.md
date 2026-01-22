@@ -1,23 +1,29 @@
-# minimal-uv-project-template
+# GEPA (Genetic-Pareto) automatic prompt optimisation - client examples
 
-A minimal quick-start Python project template, using [uv](https://github.com/astral-sh/uv) package manager.
+## Overview
 
-Uses the following 3rd party libraries:
+This repo contains client examples for the GEPA library.
 
-- APP - https://github.com/tiangolo/typer - For building CLI applications
-- APP - https://github.com/Delgan/loguru - Python logging made (stupidly) simple
-- APP - https://github.com/theskumar/python-dotenv - Reads key-value pairs `.env` file and sets environment vars
-- APP - https://github.com/pydantic/pydantic - Data validation and settings management using Python type annotations
-- DEV - https://github.com/astral-sh/uv - An extremely fast Python package manager
-- DEV - https://github.com/astral-sh/ruff - Extremely fast Python linter and code formatter
-- DEV - https://github.com/microsoft/pyright - Static type checker for Python
-- DEV - https://github.com/pytest-dev/pytest - makes it easy to write small tests, yet scales to support complex functional testing
-- DEV - https://github.com/pre-commit/pre-commit - A framework for managing pre-commit hooks
+Library: <https://github.com/gepa-ai/gepa>
 
-Create venv virtual environment with `uv sync`
+Paper: <https://arxiv.org/abs/2507.19457>
 
-Pre-commit hooks require a one-time setup: `uv run pre-commit install`
+"Genetic-Pareto" optimization for systems made of text components (prompts/specs/code snippets), using reflective edits guided by execution + evaluation traces against any metric.
 
-See Makefile for quick utility commands for creation of venv, running the app, running tests, typechecking, pre-commit hooks etc.
+## FAQ
 
-Includes project cursor rule files in `.cursor/rules`as per https://docs.cursor.com/context/rules
+- What does it optimize? Any text component in a pipeline—single prompts or multi-part textual systems. (GitHub)
+- Does it need gradients? No—improvements come from iterative generation/reflection and metric-based selection. (GitHub)
+- What metrics can it use? Anything you can score automatically (task success, F1, rubric scores, custom validators). (GitHub)
+
+## Resources
+
+- https://github.com/gepa-ai/gepa/tree/main/src/gepa/adapters/dspy_full_program_adapter - GEPA evolve entire DSPy programs—including signatures, modules, and control flow
+- https://dspy.ai/tutorials/entity_extraction/
+- https://dspy.ai/tutorials/gepa_ai_program/
+- https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/ - structured information extraction and classification
+
+
+## Videos
+
+- https://www.youtube.com/watch?v=rrtxyZ4Vnv8 - Matei Zaharia - Reflective Optimization of Agents with GEPA and DSPy
