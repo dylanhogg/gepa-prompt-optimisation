@@ -15,8 +15,11 @@ which-python:
 clean:
 	rm -rf .venv
 
-run:
-	uv run src/app.py reqarg1 --optional-arg "optional arg"
+mlflow:
+	mlflow ui --host 127.0.0.1 --port 5001 --backend-store-uri sqlite:///mlruns.db
+
+run-example:
+	uv run src/clients/example/gepa_aime.py --max-metric-calls 1
 
 test:
 	PYTHONPATH='./src' uv run pytest -vv --capture=no tests
