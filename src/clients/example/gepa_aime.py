@@ -1,61 +1,22 @@
 import os
-import sys
 import time
 from datasets import Dataset
 import typer
-from gepa.logging.logger import LoggerProtocol
 from loguru import logger
 from dotenv import load_dotenv
 import litellm
 import gepa
 
+from library import log
+
 assert load_dotenv(), "Failed to load .env file"
 assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
 
-# app = typer.Typer(pretty_exceptions_show_locals=False)
-app = typer.Typer(pretty_exceptions_enable=False)
+app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=True)
 
 
-class CustomLogger(LoggerProtocol):
-    def log(self, message: str):
-        logger.opt(depth=1).info(message)
-
-
-def configure_loguru(remove_existing=True, logfile="./log/app.log"):
-    if remove_existing:
-        logger.remove()
-    logger.add(sys.stderr, level=os.getenv("LOG_STDERR_LEVEL", "INFO"))
-    logger.add(
-        logfile,
-        level=os.getenv("LOG_FILE_LEVEL", "DEBUG"),
-        rotation=os.getenv("LOG_FILE_ROTATION", "00:00"),
-    )
-
-
-def on_litellm_success(kwargs, response, start, end):
-    logger.opt(depth=1).info(
-        {
-            "model": kwargs.get("model"),
-            "messages": kwargs.get("messages"),
-            "latency_ms": (end - start) * 1000,
-            "response": response,
-        }
-    )
-
-
-def on_litellm_failure(kwargs, response, start, end):
-    logger.opt(depth=1).error(
-        {
-            "model": kwargs.get("model"),
-            "messages": kwargs.get("messages"),
-            "latency_ms": (end - start) * 1000,
-            "error": response,
-        }
-    )
-
-
-litellm.success_callback = [on_litellm_success]
-litellm.failure_callback = [on_litellm_failure]
+litellm.success_callback = [log.on_litellm_success]
+litellm.failure_callback = [log.on_litellm_failure]
 # litellm._turn_on_debug()
 
 
@@ -135,7 +96,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         reflection_lm="openai/gpt-5",  # <-- Use a strong model to reflect on mistakes and propose better prompts
         track_best_outputs=True,
         display_progress_bar=True,
-        logger=CustomLogger(),
+        logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
         mlflow_experiment_name="gepa-example-aime",
@@ -149,5 +110,5 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
 
 
 if __name__ == "__main__":
-    configure_loguru()
+    log.configure_loguru()
     app()
