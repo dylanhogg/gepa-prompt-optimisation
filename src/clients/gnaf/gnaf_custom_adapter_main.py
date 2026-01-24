@@ -1,7 +1,8 @@
 import os
 import time
 
-from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from gnaf_common import get_seed_prompt, init_dataset_default_adapter
+from library.log import log_results
 from gnaf_custom_adapter_classes import CustomGEMPAdapter, Evaluator
 from gepa.core.adapter import GEPAAdapter
 import typer
