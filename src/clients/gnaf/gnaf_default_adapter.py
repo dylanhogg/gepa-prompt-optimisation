@@ -1,4 +1,3 @@
-import json
 import os
 import time
 from gepa.adapters.default_adapter.default_adapter import DefaultAdapter, Evaluator
@@ -9,7 +8,7 @@ from dotenv import load_dotenv
 import litellm
 from gepa.api import optimize
 
-from clients.datasets.gnaf import init_dataset_default_adapter
+from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
 from library import log
 
 assert load_dotenv(), "Failed to load .env file"
@@ -38,56 +37,14 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
     assert max_metric_calls > 0, "max_metric_calls must be greater than 0"
 
-    # Load AIME dataset
-    logger.info("Loading dataset...")
-
     trainset, valset, testset = init_dataset_default_adapter()
-    logger.info(f"Loaded {len(trainset)=}, {len(valset)=}")
-    trainset = trainset[:4]
-    valset = valset[:2]
-    logger.info(f"Trimmed to {len(trainset)=}, {len(valset)=}")
-
-    gnaf_fields = [
-        "building_name",
-        "flat_number",
-        "flat_number_prefix",
-        "flat_number_suffix",
-        "flat_type",
-        # "latitude",
-        "level_number",
-        "level_number_prefix",
-        "level_number_suffix",
-        "level_type",
-        "locality_name",
-        # "longitude",
-        "lot_number",
-        "lot_number_prefix",
-        "lot_number_suffix",
-        "number_first",
-        "number_first_prefix",
-        "number_first_suffix",
-        "number_last",
-        "number_last_prefix",
-        "number_last_suffix",
-        "postcode",
-        "state_abbreviation",
-        "street_name",
-        "street_suffix_code",
-        "street_type_code",
-    ]
-
-    gnaf_fields_str = ", ".join(gnaf_fields)
-
-    seed_prompt = {
-        "system_prompt": f"You are a helpful assistant. You are given an Australian text address. "
-        f"The answer should be structured json with the Geoscape Geocoded National Address File (GNAF) key fields: `{gnaf_fields_str}`. "
-    }
+    seed_prompt = get_seed_prompt()
 
     task_lm = "openai/gpt-4.1-mini"  # <-- This is the model being optimized
     evaluator: Evaluator | None = None
     active_adapter: GEPAAdapter | None = DefaultAdapter(model=task_lm, evaluator=evaluator)
 
-    # Let's run GEPA optimization process.
+    # Run GEPA optimization process.
     t0 = time.time()
     logger.info(f"Seed system_prompt: {seed_prompt['system_prompt']}")
     logger.info("Running GEPA optimization process...")
@@ -107,20 +64,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         mlflow_experiment_name="gepa-simple1",
     )
 
-    logger.info("--------------------------------")
-    logger.info(f"{gepa_result=}\n\n")
-
-    candidates = gepa_result.candidates
-    initial_seed_system_prompt = seed_prompt["system_prompt"]
-    best_candidate_system_prompt = gepa_result.best_candidate["system_prompt"]
-
-    logger.info(f"Number of candidates: {len(candidates)}")
-    for i, candidate in enumerate(candidates):
-        logger.info(f"Candidate {i + 1}:")
-        logger.info(f"{json.dumps(candidate, indent=4)}\n\n")
-    logger.info("--------------------------------")
-    logger.info(f"{initial_seed_system_prompt=}\n\n")
-    logger.info(f"{best_candidate_system_prompt=}\n\n")
+    log_results(gepa_result, seed_prompt)
 
     t1 = time.time() - t0
     logger.info(f"Done in {t1:.2f} seconds.")
