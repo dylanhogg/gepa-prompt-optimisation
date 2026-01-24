@@ -5,14 +5,23 @@ from gepa.logging.logger import LoggerProtocol
 from loguru import logger
 
 
-def configure_loguru(remove_existing: bool = True, logfile: str = "./log/app.log") -> None:
+def configure_loguru(remove_existing: bool = True, log_dir: str = "./log") -> None:
+    from datetime import datetime
+
     if remove_existing:
         logger.remove()
+
+    # Create datetime-stamped log file for this session
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logfile = os.path.join(log_dir, f"{timestamp}.log")
+
+    # Ensure log directory exists
+    os.makedirs(log_dir, exist_ok=True)
+
     logger.add(sys.stderr, level=os.getenv("LOG_STDERR_LEVEL", "INFO"))
     logger.add(
         logfile,
         level=os.getenv("LOG_FILE_LEVEL", "DEBUG"),
-        rotation=os.getenv("LOG_FILE_ROTATION", "00:00"),
     )
 
 

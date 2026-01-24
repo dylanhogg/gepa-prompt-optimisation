@@ -81,11 +81,11 @@ class ContainsAnswerEvaluator:
         return EvaluationResult(score=score, feedback=feedback, objective_scores=None)
 
 
-class DefaultAdapter(GEPAAdapter[DefaultDataInst, DefaultTrajectory, DefaultRolloutOutput]):
+class CustomGEMPAdapter(GEPAAdapter[DefaultDataInst, DefaultTrajectory, DefaultRolloutOutput]):
     def __init__(
         self,
         model: str | ChatCompletionCallable,
-        evaluator: Evaluator | None = None,
+        evaluator: Evaluator | None = None,  # TODO: make required
         max_litellm_workers: int = 10,
         litellm_batch_completion_kwargs: dict[str, Any] | None = None,
     ):

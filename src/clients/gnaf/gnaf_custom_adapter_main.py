@@ -2,7 +2,8 @@ import json
 import os
 import time
 
-from gnaf_custom_adapter_classes import DefaultAdapter, DefaultDataInst, Evaluator
+from clients.datasets.gnaf import init_dataset_default_adapter
+from gnaf_custom_adapter_classes import CustomGEMPAdapter, Evaluator
 from gepa.core.adapter import GEPAAdapter
 import typer
 from loguru import logger
@@ -20,46 +21,10 @@ app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=
 litellm.success_callback = [log.on_litellm_success]
 litellm.failure_callback = [log.on_litellm_failure]
 
-
-def init_dataset(example_count: int = 100):
-    """
-    https://www.kaggle.com/datasets/dylanhogg/geoscape-geocoded-national-address-file-gnaf'
-
-    TODO: custom token instumentation:
-    https://chatgpt.com/c/696c8c74-6eac-8323-909e-d2835dc6c80d
-    """
-
-    import random
-
-    from datasets import load_dataset
-
-    dataset_name = "dylanhogg/gnaf-2022-structured-training-100000-v0-instruct"
-
-    train_split: list[DefaultDataInst] = [
-        {
-            # NOTE: GEPA's DefaultAdapter is typed to DefaultDataInst; force concrete `str` types
-            # so Pyright doesn't infer dict[str, Unknown] from HuggingFace dataset `.get(...)`.
-            "input": str(x.get("input") or ""),  # pyright: ignore[reportAttributeAccessIssue]
-            "additional_context": {"solution": str(x.get("output") or "")},  # pyright: ignore[reportAttributeAccessIssue]
-            "answer": str(x.get("output") or ""),  # pyright: ignore[reportAttributeAccessIssue]
-        }
-        for x in load_dataset(dataset_name)["train"]
-    ]
-    train_split = train_split[:example_count]
-    random.Random(0).shuffle(train_split)
-    # test_split = [
-    #     {"input": x["problem"], "answer": "### " + str(x["answer"])}
-    #     for x in load_dataset("MathArena/aime_2025")["train"]
-    # ]
-
-    trainset = train_split[: len(train_split) // 2]
-    valset = train_split[len(train_split) // 2 :]
-    # testset = test_split * 5
-    testset = []  # TODO
-
-    logger.info(f"Loaded {len(trainset)=}, {len(valset)=}, {len(testset)=} from {dataset_name=}")
-
-    return trainset, valset, testset
+"""
+Case 3: Custom GEPA adapter
+GEPA custom adapter example: uses `gnaf_custom_adapter_classes.py` which are inspired by `gepa.adapters.default_adapter.DefaultAdapter`
+"""
 
 
 @app.command()
@@ -77,7 +42,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     # Load AIME dataset
     logger.info("Loading dataset...")
 
-    trainset, valset, testset = init_dataset()
+    trainset, valset, testset = init_dataset_default_adapter()
     logger.info(f"Loaded {len(trainset)=}, {len(valset)=}")
     trainset = trainset[:4]
     valset = valset[:2]
@@ -129,7 +94,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     # )
 
     evaluator: Evaluator | None = None
-    active_adapter: GEPAAdapter | None = DefaultAdapter(model=task_lm, evaluator=evaluator)
+    active_adapter: GEPAAdapter | None = CustomGEMPAdapter(model=task_lm, evaluator=evaluator)
 
     # Let's run GEPA optimization process.
     t0 = time.time()

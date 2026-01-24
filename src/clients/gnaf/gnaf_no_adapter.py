@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import litellm
 from gepa.api import optimize
 
+from clients.datasets.gnaf import init_dataset_default_adapter
 from library import log
 
 assert load_dotenv(), "Failed to load .env file"
@@ -18,44 +19,10 @@ app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=
 litellm.success_callback = [log.on_litellm_success]
 litellm.failure_callback = [log.on_litellm_failure]
 
-
-def init_dataset(example_count: int = 100):
-    """
-    https://www.kaggle.com/datasets/dylanhogg/geoscape-geocoded-national-address-file-gnaf'
-
-    TODO: custom token instumentation:
-    https://chatgpt.com/c/696c8c74-6eac-8323-909e-d2835dc6c80d
-    """
-
-    import random
-
-    from datasets import load_dataset
-
-    dataset_name = "dylanhogg/gnaf-2022-structured-training-100000-v0-instruct"
-
-    train_split = [
-        {
-            "input": x.get("input"),  # pyright: ignore[reportAttributeAccessIssue]
-            "additional_context": {"solution": x.get("output")},  # pyright: ignore[reportAttributeAccessIssue]
-            "answer": str(x.get("output")),  # pyright: ignore[reportAttributeAccessIssue]
-        }
-        for x in load_dataset(dataset_name)["train"]
-    ]
-    train_split = train_split[:example_count]
-    random.Random(0).shuffle(train_split)
-    # test_split = [
-    #     {"input": x["problem"], "answer": "### " + str(x["answer"])}
-    #     for x in load_dataset("MathArena/aime_2025")["train"]
-    # ]
-
-    trainset = train_split[: len(train_split) // 2]
-    valset = train_split[len(train_split) // 2 :]
-    # testset = test_split * 5
-    testset = []  # TODO
-
-    logger.info(f"Loaded {len(trainset)=}, {len(valset)=}, {len(testset)=} from {dataset_name=}")
-
-    return trainset, valset, testset
+"""
+Case 1: No adapter specified, implicity uses builtin GEPA default adapter
+No adapter specified for `gepa.api.optimize`, implicitly uses `gepa.adapters.default_adapter.DefaultAdapter` internally
+"""
 
 
 @app.command()
@@ -73,7 +40,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     # Load AIME dataset
     logger.info("Loading dataset...")
 
-    trainset, valset, testset = init_dataset()
+    trainset, valset, testset = init_dataset_default_adapter()
     logger.info(f"Loaded {len(trainset)=}, {len(valset)=}")
     trainset = trainset[:4]
     valset = valset[:2]
