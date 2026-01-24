@@ -31,7 +31,11 @@ run-gnaf-default-adapter:
 
 run-gnaf-custom-adapter:
 	# Explicitly uses DefaultAdapter copied to `gnaf_custom_adapter_classes.py`
-	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_custom_adapter_main.py --max-metric-calls 1
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_custom_adapter.py --max-metric-calls 10
+
+run-gnaf-structured-adapter:
+	# Custom adapter with structured JSON evaluation (precision/recall/F1)
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_structured_adapter.py --max-metric-calls 10
 
 test:
 	PYTHONPATH='./src' uv run pytest -vv --capture=no tests

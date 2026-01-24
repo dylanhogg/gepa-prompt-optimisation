@@ -69,6 +69,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
 
     t1 = time.time() - t0
     logger.info(f"Done in {t1:.2f} seconds.")
+    logger.info(f"Finished GEPA run {__file__}")
 
 
 if __name__ == "__main__":
