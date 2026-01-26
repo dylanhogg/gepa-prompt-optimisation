@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 from gepa.adapters.default_adapter.default_adapter import DefaultAdapter, Evaluator
 from gepa.core.adapter import GEPAAdapter
@@ -9,15 +10,15 @@ import litellm
 from gepa.api import optimize
 
 from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
-from library import log
+from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"
 assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
 
 app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=True)
 
-litellm.success_callback = [log.on_litellm_success]
-litellm.failure_callback = [log.on_litellm_failure]
+litellm.success_callback = [llm.on_litellm_success]
+litellm.failure_callback = [llm.on_litellm_failure]
 
 """
 Case 2: Explicitly use builtin default GEPA adapter
@@ -61,7 +62,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
-        mlflow_experiment_name="gepa-simple1",
+        mlflow_experiment_name=Path(__file__).name,
     )
 
     log_results(gepa_result, seed_prompt)

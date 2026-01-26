@@ -1,26 +1,190 @@
+from datetime import datetime
+import json
 import os
+from pathlib import Path
+from statistics import mean
 import time
+
+from gepa.core.result import GEPAResult
 
 from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
 from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, Protocol, TypedDict, cast
 from gepa.core.adapter import EvaluationBatch, GEPAAdapter
 
+import threading
 import typer
 from loguru import logger
 from dotenv import load_dotenv
 import litellm
 from gepa.api import optimize
 
-from library import log
+from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"
 assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
 
 app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=True)
+run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-litellm.success_callback = [log.on_litellm_success]
-litellm.failure_callback = [log.on_litellm_failure]
+llm_calls = []
+llm_calls_lock = threading.Lock()
+
+
+def save_llm_calls(llm_calls: list[dict]):
+    with llm_calls_lock:
+        logger.error(f"Saving {len(llm_calls)} LLM calls to ./runs/{run_id}/llm_calls.json")
+        os.makedirs(f"./runs/{run_id}", exist_ok=True)
+        with open(f"./runs/{run_id}/llm_calls.json", "w") as f:
+            json.dump(llm_calls, f, indent=2)
+
+
+def summarize_llm_calls(run_id: str, script_path: str, llm_calls: list[dict], task_lm: str, reflection_lm: str) -> dict:
+    total_lm_calls = len(llm_calls)
+    # total_reflection_lm_calls = sum(1 for call in llm_calls if call["model"] == reflection_lm)  # call["model"] == "gpt-5"
+    # total_task_lm_calls = sum(1 for call in llm_calls if call["model"] == task_lm)
+    total_reflection_lm_calls = sum(
+        1 for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == reflection_lm
+    )  # call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == "openai/gpt-5"
+    total_task_lm_calls = sum(
+        1 for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == task_lm
+    )
+    if sum([total_task_lm_calls, total_reflection_lm_calls]) != total_lm_calls:
+        logger.error(
+            f"Total LM calls ({total_lm_calls}) does not match the sum of task LM calls ({total_task_lm_calls}) and reflection LM calls ({total_reflection_lm_calls})"
+        )
+
+    total_cost_usd = sum(call["cost"] for call in llm_calls)
+    # total_reflection_lm_cost_usd = sum(call["cost"] for call in llm_calls if call["model"] == reflection_lm)
+    # total_task_lm_cost_usd = sum(call["cost"] for call in llm_calls if call["model"] == task_lm)
+    total_reflection_lm_cost_usd = sum(
+        call["cost"]
+        for call in llm_calls
+        if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == reflection_lm
+    )
+    total_task_lm_cost_usd = sum(
+        call["cost"] for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == task_lm
+    )
+    if (total_task_lm_cost_usd + total_reflection_lm_cost_usd - total_cost_usd) > 1e-6:
+        logger.error(
+            f"Total cost USD ({total_cost_usd}) does not match the sum of task LM cost USD ({total_task_lm_cost_usd}) and reflection LM cost USD ({total_reflection_lm_cost_usd})"
+        )
+
+    mean_latency_ms = mean(call["latency_ms"] for call in llm_calls) if llm_calls else 0
+    total_prompt_tokens = sum(
+        call.get("response_dict", {}).get("usage", {}).get("prompt_tokens", 0) for call in llm_calls
+    )
+    total_completion_tokens = sum(
+        call.get("response_dict", {}).get("usage", {}).get("completion_tokens", 0) for call in llm_calls
+    )
+    total_tokens = sum(call.get("response_dict", {}).get("usage", {}).get("total_tokens", 0) for call in llm_calls)
+
+    summary = {
+        "run_id": run_id,
+        "script_path": script_path,
+        "task_lm": task_lm,
+        "reflection_lm": reflection_lm,
+        "total_lm_calls": total_lm_calls,
+        "total_task_lm_calls": total_task_lm_calls,
+        "total_reflection_lm_calls": total_reflection_lm_calls,
+        "total_cost_usd": total_cost_usd,
+        "total_task_lm_cost_usd": total_task_lm_cost_usd,
+        "total_reflection_lm_cost_usd": total_reflection_lm_cost_usd,
+        "total_task_lm_cost_usd_percentage": (total_task_lm_cost_usd / total_cost_usd) * 100
+        if total_cost_usd > 0
+        else 0,
+        "total_reflection_lm_cost_usd_percentage": (total_reflection_lm_cost_usd / total_cost_usd) * 100
+        if total_cost_usd > 0
+        else 0,
+        "mean_latency_ms": mean_latency_ms,
+        "total_prompt_tokens": total_prompt_tokens,
+        "total_completion_tokens": total_completion_tokens,
+        "total_tokens": total_tokens,
+    }
+
+    os.makedirs(f"./runs/{run_id}", exist_ok=True)
+    with open(f"./runs/{run_id}/llm_calls_summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
+
+    return summary
+
+
+def summarize_run(
+    run_id: str,
+    script_path: str,
+    seed_prompt: dict,
+    trainset: list,
+    valset: list,
+    testset: list,
+    max_metric_calls: int,
+    task_lm: str,
+    reflection_lm: str,
+    gepa_result: GEPAResult,
+    summary_llm_calls: dict,
+) -> dict:
+    candidates = gepa_result.candidates
+    initial_seed_system_prompt = seed_prompt["system_prompt"]
+    best_candidate_system_prompt = gepa_result.best_candidate["system_prompt"]
+
+    summary = {
+        "run_id": run_id,
+        "script_path": script_path,
+        "max_metric_calls": max_metric_calls,
+        "task_lm": task_lm,
+        "reflection_lm": reflection_lm,
+        "len_trainset": len(trainset),
+        "len_valset": len(valset),
+        "len_testset": len(testset),
+        "total_lm_calls": summary_llm_calls["total_lm_calls"],
+        "total_task_lm_calls": summary_llm_calls["total_task_lm_calls"],
+        "total_reflection_lm_calls": summary_llm_calls["total_reflection_lm_calls"],
+        "total_cost_usd": summary_llm_calls["total_cost_usd"],
+        "total_task_lm_cost_usd": summary_llm_calls["total_task_lm_cost_usd"],
+        "total_reflection_lm_cost_usd": summary_llm_calls["total_reflection_lm_cost_usd"],
+        "gepa_seed_system_prompt": initial_seed_system_prompt,
+        "gepa_best_system_prompt": best_candidate_system_prompt,
+        "len_gepa_seed_system_prompt": len(initial_seed_system_prompt),
+        "len_gepa_best_system_prompt": len(best_candidate_system_prompt),
+        "seed_and_best_different": initial_seed_system_prompt != best_candidate_system_prompt,
+        "len_gepa_candidates": len(candidates),
+        "gepa_candidates": candidates,
+    }
+
+    os.makedirs(f"./runs/{run_id}", exist_ok=True)
+    with open(f"./runs/{run_id}/run_summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
+
+    return summary
+
+
+def on_litellm_input(kwargs, input, start, end):
+    data = llm.process_litellm_callback(kwargs, input, start, end, "input")
+    logger.opt(depth=1).warning(data)
+    with llm_calls_lock:
+        llm_calls.append(data)
+    save_llm_calls(llm_calls)
+
+
+def on_litellm_success(kwargs, response, start, end):
+    data = llm.process_litellm_callback(kwargs, response, start, end, "success")
+    logger.opt(depth=1).warning(data)
+    with llm_calls_lock:
+        llm_calls.append(data)
+    save_llm_calls(llm_calls)
+
+
+def on_litellm_failure(kwargs, response, start, end):
+    data = llm.process_litellm_callback(kwargs, response, start, end, "failure")
+    logger.opt(depth=1).warning(data)
+    with llm_calls_lock:
+        llm_calls.append(data)
+    save_llm_calls(llm_calls)
+
+
+litellm.input_callback = [on_litellm_input]
+litellm.success_callback = [on_litellm_success]
+litellm.failure_callback = [on_litellm_failure]
+
 
 """
 Case 3: Copy of default GEPA adapter classes
@@ -104,7 +268,7 @@ class ContainsAnswerEvaluator:
         return EvaluationResult(score=score, feedback=feedback, objective_scores=None)
 
 
-class CustomGEMPAdapter(GEPAAdapter[DefaultDataInst, DefaultTrajectory, DefaultRolloutOutput]):
+class CustomGEPAAdapter(GEPAAdapter[DefaultDataInst, DefaultTrajectory, DefaultRolloutOutput]):
     def __init__(
         self,
         model: str | ChatCompletionCallable,
@@ -245,6 +409,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     seed_prompt = get_seed_prompt()
 
     task_lm = "openai/gpt-4.1-mini"  # <-- This is the model being optimized
+    reflection_lm = "openai/gpt-5"  # <-- Use a strong model to reflect on mistakes and propose better prompts
 
     # evaluator: Evaluator | None = None,
     # evaluator = None
@@ -254,7 +419,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     # )
 
     evaluator: Evaluator | None = None
-    active_adapter: GEPAAdapter | None = CustomGEMPAdapter(model=task_lm, evaluator=evaluator)
+    active_adapter: GEPAAdapter | None = CustomGEPAAdapter(model=task_lm, evaluator=evaluator)
 
     # Run GEPA optimization process.
     t0 = time.time()
@@ -265,21 +430,39 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         trainset=trainset,
         valset=valset,
         adapter=active_adapter,  # Supply either `adapter` or `task_lm`, but not both
-        # task_lm="openai/gpt-4.1-mini",  # <-- This is the model being optimized (only used if `adapter` is not provided)
         max_metric_calls=max_metric_calls,  # <-- Set a budget
-        reflection_lm="openai/gpt-5",  # <-- Use a strong model to reflect on mistakes and propose better prompts
+        reflection_lm=reflection_lm,
         track_best_outputs=True,
         display_progress_bar=True,
         logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
-        mlflow_experiment_name="gepa-simple1",
+        mlflow_experiment_name=Path(__file__).name,
     )
 
     log_results(gepa_result, seed_prompt)
 
     t1 = time.time() - t0
     logger.info(f"Done in {t1:.2f} seconds.")
+
+    save_llm_calls(llm_calls)
+    summary_llm_calls = summarize_llm_calls(run_id, Path(__file__).name, llm_calls, task_lm, reflection_lm)
+    logger.info(f"LLM calls summary:\n{summary_llm_calls}")
+
+    summary_run = summarize_run(
+        run_id,
+        Path(__file__).name,
+        seed_prompt,
+        trainset,
+        valset,
+        testset,
+        max_metric_calls,
+        task_lm,
+        reflection_lm,
+        gepa_result,
+        summary_llm_calls,
+    )
+    logger.info(f"Run summary:\n{summary_run}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 from datasets import Dataset
 import typer
@@ -7,7 +8,7 @@ from dotenv import load_dotenv
 import litellm
 import gepa
 
-from library import log
+from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"
 assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
@@ -15,8 +16,8 @@ assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
 app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=True)
 
 
-litellm.success_callback = [log.on_litellm_success]
-litellm.failure_callback = [log.on_litellm_failure]
+litellm.success_callback = [llm.on_litellm_success]
+litellm.failure_callback = [llm.on_litellm_failure]
 # litellm._turn_on_debug()
 
 
@@ -99,7 +100,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
-        mlflow_experiment_name="gepa-example-aime",
+        mlflow_experiment_name=Path(__file__).name,
     )
 
     logger.info("GEPA Optimized Prompt:", gepa_result.best_candidate["system_prompt"])
