@@ -1,4 +1,3 @@
-import json
 import random
 from datasets import load_dataset
 from loguru import logger
@@ -87,20 +86,3 @@ def get_seed_prompt():
     }
 
     return seed_prompt
-
-
-def log_results(gepa_result, seed_prompt):
-    logger.info("--------------------------------")
-    logger.info(f"{gepa_result=}\n\n")
-
-    candidates = gepa_result.candidates
-    initial_seed_system_prompt = seed_prompt["system_prompt"]
-    best_candidate_system_prompt = gepa_result.best_candidate["system_prompt"]
-
-    logger.info(f"Number of candidates: {len(candidates)}")
-    for i, candidate in enumerate(candidates):
-        logger.info(f"Candidate {i + 1}:")
-        logger.info(f"{json.dumps(candidate, indent=4)}\n\n")
-    logger.info("--------------------------------")
-    logger.info(f"{initial_seed_system_prompt=}\n\n")
-    logger.info(f"{best_candidate_system_prompt=}\n\n")

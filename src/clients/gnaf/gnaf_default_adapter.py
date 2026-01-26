@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 import litellm
 from gepa.api import optimize
 
-from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from gnaf_common import get_seed_prompt, init_dataset_default_adapter
+from library.log import log_results
 from library import log
 
 assert load_dotenv(), "Failed to load .env file"
@@ -68,6 +69,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
 
     t1 = time.time() - t0
     logger.info(f"Done in {t1:.2f} seconds.")
+    logger.info(f"Finished GEPA run {__file__}")
 
 
 if __name__ == "__main__":
