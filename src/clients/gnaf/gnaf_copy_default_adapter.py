@@ -33,7 +33,7 @@ llm_calls_lock = threading.Lock()
 
 def save_llm_calls(llm_calls: list[dict]):
     with llm_calls_lock:
-        logger.error(f"Saving {len(llm_calls)} LLM calls to ./runs/{run_id}/llm_calls.json")
+        logger.info(f"Saving {len(llm_calls)} LLM calls to ./runs/{run_id}/llm_calls.json")
         os.makedirs(f"./runs/{run_id}", exist_ok=True)
         with open(f"./runs/{run_id}/llm_calls.json", "w") as f:
             json.dump(llm_calls, f, indent=2)
@@ -125,6 +125,13 @@ def summarize_run(
     candidates = gepa_result.candidates
     initial_seed_system_prompt = seed_prompt["system_prompt"]
     best_candidate_system_prompt = gepa_result.best_candidate["system_prompt"]
+    val_aggregate_scores = gepa_result.val_aggregate_scores
+    if len(val_aggregate_scores) != len(candidates):
+        logger.error(
+            f"Length of val_aggregate_scores ({len(val_aggregate_scores)}) does not match the length of candidates ({len(candidates)})"
+        )
+
+    gepa_result_dict = gepa_result.to_dict()
 
     summary = {
         "run_id": run_id,
@@ -148,6 +155,8 @@ def summarize_run(
         "seed_and_best_different": initial_seed_system_prompt != best_candidate_system_prompt,
         "len_gepa_candidates": len(candidates),
         "gepa_candidates": candidates,
+        "gepa_scores": val_aggregate_scores,
+        "gepa_result_dict": gepa_result_dict,
     }
 
     os.makedirs(f"./runs/{run_id}", exist_ok=True)
@@ -181,6 +190,7 @@ def on_litellm_failure(kwargs, response, start, end):
     save_llm_calls(llm_calls)
 
 
+# TODO: should we be using async callbacks? https://docs.litellm.ai/docs/observability/custom_callback#async-callback-functions
 litellm.input_callback = [on_litellm_input]
 litellm.success_callback = [on_litellm_success]
 litellm.failure_callback = [on_litellm_failure]
