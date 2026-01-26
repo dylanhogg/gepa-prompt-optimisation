@@ -21,17 +21,17 @@ mlflow:
 run-example:
 	PYTHONPATH='./src' uv run src/clients/example/gepa_aime.py --max-metric-calls 1
 
-run-gnaf-no-adapter:
-	# No adapter specified, uses `gepa.adapters.default_adapter.DefaultAdapter` internally
-	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_no_adapter.py --max-metric-calls 1
+run-gnaf-implicit-default-adapter:
+	# Case 1: No adapter specified, implicity uses builtin GEPA default adapter
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_implicit_default_adapter.py --max-metric-calls 2
 
-run-gnaf-default-adapter:
-	# Explicitly uses `gepa.adapters.default_adapter.DefaultAdapter`
-	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_default_adapter.py --max-metric-calls 1
+run-gnaf-explicit-default-adapter:
+	# Case 2: Explicitly use builtin default GEPA adapter
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_explicit_default_adapter.py --max-metric-calls 2
 
-run-gnaf-custom-adapter:
-	# Explicitly uses DefaultAdapter copied to `gnaf_custom_adapter_classes.py`
-	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_custom_adapter_main.py --max-metric-calls 1
+run-gnaf-copy-default-adapter:
+	# Case 3: Copy of default GEPA adapter classes
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_copy_default_adapter.py --max-metric-calls 2
 
 test:
 	PYTHONPATH='./src' uv run pytest -vv --capture=no tests
