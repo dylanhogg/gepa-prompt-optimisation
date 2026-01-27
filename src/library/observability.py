@@ -21,22 +21,19 @@ def save_llm_calls(run_id: str, llm_calls: list[dict]):
 
 def summarize_llm_calls(run_id: str, script_path: str, llm_calls: list[dict], task_lm: str, reflection_lm: str) -> dict:
     total_lm_calls = len(llm_calls)
-    # total_reflection_lm_calls = sum(1 for call in llm_calls if call["model"] == reflection_lm)  # call["model"] == "gpt-5"
-    # total_task_lm_calls = sum(1 for call in llm_calls if call["model"] == task_lm)
     total_reflection_lm_calls = sum(
         1 for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == reflection_lm
-    )  # call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == "openai/gpt-5"
+    )
     total_task_lm_calls = sum(
         1 for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == task_lm
     )
     if sum([total_task_lm_calls, total_reflection_lm_calls]) != total_lm_calls:
         logger.error(
-            f"Total LM calls ({total_lm_calls}) does not match the sum of task LM calls ({total_task_lm_calls}) and reflection LM calls ({total_reflection_lm_calls})"
+            f"Total LM calls ({total_lm_calls}) does not match the sum of task LM calls ({total_task_lm_calls}) and "
+            f"reflection LM calls ({total_reflection_lm_calls})"
         )
 
     total_cost_usd = sum(call["cost"] for call in llm_calls)
-    # total_reflection_lm_cost_usd = sum(call["cost"] for call in llm_calls if call["model"] == reflection_lm)
-    # total_task_lm_cost_usd = sum(call["cost"] for call in llm_calls if call["model"] == task_lm)
     total_reflection_lm_cost_usd = sum(
         call["cost"]
         for call in llm_calls
@@ -47,7 +44,8 @@ def summarize_llm_calls(run_id: str, script_path: str, llm_calls: list[dict], ta
     )
     if (total_task_lm_cost_usd + total_reflection_lm_cost_usd - total_cost_usd) > 1e-6:
         logger.error(
-            f"Total cost USD ({total_cost_usd}) does not match the sum of task LM cost USD ({total_task_lm_cost_usd}) and reflection LM cost USD ({total_reflection_lm_cost_usd})"
+            f"Total cost USD ({total_cost_usd}) does not match the sum of task LM cost USD ({total_task_lm_cost_usd}) "
+            f"and reflection LM cost USD ({total_reflection_lm_cost_usd})"
         )
 
     mean_latency_ms = mean(call["latency_ms"] for call in llm_calls) if llm_calls else 0
@@ -108,7 +106,8 @@ def summarize_run(
     val_aggregate_scores = gepa_result.val_aggregate_scores
     if len(val_aggregate_scores) != len(candidates):
         logger.error(
-            f"Length of val_aggregate_scores ({len(val_aggregate_scores)}) does not match the length of candidates ({len(candidates)})"
+            f"Length of val_aggregate_scores ({len(val_aggregate_scores)}) does not match "
+            f"the length of candidates ({len(candidates)})"
         )
 
     repo = Repo(".", search_parent_directories=True)

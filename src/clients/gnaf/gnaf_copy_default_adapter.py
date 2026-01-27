@@ -58,7 +58,8 @@ litellm.failure_callback = [on_litellm_failure]
 
 """
 Case 3: Copy of default GEPA adapter classes
-Copies the default GEPA adapter classes from `gepa.adapters.default_adapter.DefaultAdapter` (v0.0.25) with no real modifications.
+Copies the default GEPA adapter classes from `gepa.adapters.default_adapter.DefaultAdapter` (v0.0.25) 
+with no real modifications.
 """
 
 
