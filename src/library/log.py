@@ -32,25 +32,3 @@ class CustomGepaLogger(LoggerProtocol):
             logger.opt(depth=1).info(f"{json.dumps(message_dict, indent=4)}")
         except Exception:
             logger.opt(depth=1).info(f"{message}")
-
-
-def on_litellm_success(kwargs, response, start, end):
-    logger.opt(depth=1).info(
-        {
-            "model": kwargs.get("model"),
-            "messages": kwargs.get("messages"),
-            "latency_ms": (end - start) * 1000,
-            "response": response,
-        }
-    )
-
-
-def on_litellm_failure(kwargs, response, start, end):
-    logger.opt(depth=1).error(
-        {
-            "model": kwargs.get("model"),
-            "messages": kwargs.get("messages"),
-            "latency_ms": (end - start) * 1000,
-            "error": response,
-        }
-    )

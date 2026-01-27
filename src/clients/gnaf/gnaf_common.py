@@ -86,6 +86,10 @@ def get_seed_prompt():
         f"The answer should be structured json with the Geoscape Geocoded National Address File (GNAF) key fields: `{gnaf_fields_str}`. "
     }
 
+    # seed_prompt = {
+    #     "system_prompt": "You are a helpful assistant. You are given an Australian text address, and your answer should be a structured JSON with Geoscape Geocoded National Address File (GNAF) keys."
+    # }
+
     return seed_prompt
 
 

@@ -1,8 +1,7 @@
 import os
+from pathlib import Path
 import time
-
-from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
-from gnaf_custom_adapter_classes import CustomGEMPAdapter, Evaluator
+from gepa.adapters.default_adapter.default_adapter import DefaultAdapter, Evaluator
 from gepa.core.adapter import GEPAAdapter
 import typer
 from loguru import logger
@@ -10,19 +9,20 @@ from dotenv import load_dotenv
 import litellm
 from gepa.api import optimize
 
-from library import log
+from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"
 assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
 
 app = typer.Typer(pretty_exceptions_enable=False, pretty_exceptions_show_locals=True)
 
-litellm.success_callback = [log.on_litellm_success]
-litellm.failure_callback = [log.on_litellm_failure]
+litellm.success_callback = [llm.on_litellm_success]
+litellm.failure_callback = [llm.on_litellm_failure]
 
 """
-Case 3: Custom GEPA adapter
-GEPA custom adapter example: uses `gnaf_custom_adapter_classes.py` which are inspired by `gepa.adapters.default_adapter.DefaultAdapter`
+Case 2: Explicitly use builtin default GEPA adapter
+Explicitly sets `gepa.api.optimize` to use the builtin default GEPA adapter `gepa.adapters.default_adapter.DefaultAdapter`
 """
 
 
@@ -42,16 +42,8 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     seed_prompt = get_seed_prompt()
 
     task_lm = "openai/gpt-4.1-mini"  # <-- This is the model being optimized
-
-    # evaluator: Evaluator | None = None,
-    # evaluator = None
-    # active_adapter: GEPAAdapter[DataInst, Trajectory, RolloutOutput] | None = None
-    # active_adapter = cast(
-    #     GEPAAdapter[DataInst, Trajectory, RolloutOutput], DefaultAdapter(model=task_lm, evaluator=evaluator)
-    # )
-
     evaluator: Evaluator | None = None
-    active_adapter: GEPAAdapter | None = CustomGEMPAdapter(model=task_lm, evaluator=evaluator)
+    active_adapter: GEPAAdapter | None = DefaultAdapter(model=task_lm, evaluator=evaluator)
 
     # Run GEPA optimization process.
     t0 = time.time()
@@ -70,7 +62,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
-        mlflow_experiment_name="gepa-simple1",
+        mlflow_experiment_name=Path(__file__).name,
     )
 
     log_results(gepa_result, seed_prompt)
