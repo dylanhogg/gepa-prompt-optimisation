@@ -1,13 +1,12 @@
 import json
 import os
-from statistics import mean
 import threading
 from importlib.metadata import version
+from statistics import mean
 
 from gepa.core.result import GEPAResult
-from loguru import logger
 from git import Repo
-
+from loguru import logger
 
 llm_calls_lock = threading.Lock()
 
