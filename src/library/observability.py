@@ -2,9 +2,11 @@ import json
 import os
 from statistics import mean
 import threading
+from importlib.metadata import version
 
 from gepa.core.result import GEPAResult
 from loguru import logger
+from git import Repo
 
 
 llm_calls_lock = threading.Lock()
@@ -110,10 +112,17 @@ def summarize_run(
             f"Length of val_aggregate_scores ({len(val_aggregate_scores)}) does not match the length of candidates ({len(candidates)})"
         )
 
+    repo = Repo(".", search_parent_directories=True)
+    git_sha = repo.head.commit.hexsha
+    git_branch = repo.active_branch.name
+
     gepa_result_dict = gepa_result.to_dict()
 
     summary = {
         "run_id": run_id,
+        "git_sha": git_sha,
+        "git_branch": git_branch,
+        "gepa_version": version("gepa"),
         "script_path": script_path,
         "max_metric_calls": max_metric_calls,
         "task_lm": task_lm,
