@@ -1,13 +1,14 @@
 import os
-from pathlib import Path
 import time
-import typer
-from loguru import logger
-from dotenv import load_dotenv
-import litellm
-from gepa.api import optimize
+from pathlib import Path
 
+import litellm
+import typer
+from dotenv import load_dotenv
+from gepa.api import optimize
 from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from loguru import logger
+
 from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"

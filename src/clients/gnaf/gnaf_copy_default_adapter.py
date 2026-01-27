@@ -1,20 +1,18 @@
-from datetime import datetime
 import os
-from pathlib import Path
-import time
-
-
-from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
-from collections.abc import Mapping, Sequence
-from typing import Any, NamedTuple, Protocol, TypedDict, cast
-from gepa.core.adapter import EvaluationBatch, GEPAAdapter
-
 import threading
-import typer
-from loguru import logger
-from dotenv import load_dotenv
+import time
+from collections.abc import Mapping, Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import Any, NamedTuple, Protocol, TypedDict, cast
+
 import litellm
+import typer
+from dotenv import load_dotenv
 from gepa.api import optimize
+from gepa.core.adapter import EvaluationBatch, GEPAAdapter
+from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from loguru import logger
 
 from library import llm, log, observability
 
@@ -60,7 +58,8 @@ litellm.failure_callback = [on_litellm_failure]
 
 """
 Case 3: Copy of default GEPA adapter classes
-Copies the default GEPA adapter classes from `gepa.adapters.default_adapter.DefaultAdapter` (v0.0.25) with no real modifications.
+Copies the default GEPA adapter classes from `gepa.adapters.default_adapter.DefaultAdapter` (v0.0.25) 
+with no real modifications.
 """
 
 

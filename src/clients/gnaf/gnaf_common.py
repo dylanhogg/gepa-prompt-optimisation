@@ -1,8 +1,9 @@
 import json
 import random
+
 from datasets import load_dataset
-from loguru import logger
 from gepa.adapters.default_adapter.default_adapter import DefaultDataInst
+from loguru import logger
 
 
 def init_dataset_default_adapter(example_count: int = 100, split_counts: int = 2):
@@ -83,12 +84,9 @@ def get_seed_prompt():
 
     seed_prompt = {
         "system_prompt": f"You are a helpful assistant. You are given an Australian text address. "
-        f"The answer should be structured json with the Geoscape Geocoded National Address File (GNAF) key fields: `{gnaf_fields_str}`. "
+        f"The answer should be structured json with the Geoscape Geocoded National Address File "
+        f"(GNAF) key fields: `{gnaf_fields_str}`. "
     }
-
-    # seed_prompt = {
-    #     "system_prompt": "You are a helpful assistant. You are given an Australian text address, and your answer should be a structured JSON with Geoscape Geocoded National Address File (GNAF) keys."
-    # }
 
     return seed_prompt
 

@@ -1,12 +1,14 @@
 import os
-from pathlib import Path
+import random
 import time
-from datasets import Dataset
-import typer
-from loguru import logger
-from dotenv import load_dotenv
-import litellm
+from pathlib import Path
+
 import gepa
+import litellm
+import typer
+from datasets import Dataset, load_dataset
+from dotenv import load_dotenv
+from loguru import logger
 
 from library import llm, log
 
@@ -28,9 +30,6 @@ def init_dataset():
     # trainset & valset: https://huggingface.co/datasets/AI-MO/aimo-validation-aime
     # testset (unused here): https://huggingface.co/datasets/MathArena/aime_2025
     """
-
-    import random
-    from datasets import load_dataset
 
     train_ds: Dataset = load_dataset("AI-MO/aimo-validation-aime")["train"]
     train_split = [
@@ -82,7 +81,8 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
     logger.info(f"Trimmed to {len(trainset)=}, {len(valset)=}")
 
     seed_prompt = {
-        "system_prompt": "You are a helpful assistant. You are given a question and you need to answer it. The answer should be given at the end of your response in exactly the format '### <final answer>'"
+        "system_prompt": "You are a helpful assistant. You are given a question and you need to answer it. "
+        "The answer should be given at the end of your response in exactly the format '### <final answer>'"
     }
 
     # Let's run GEPA optimization process.

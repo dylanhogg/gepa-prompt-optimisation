@@ -1,15 +1,16 @@
 import os
-from pathlib import Path
 import time
-from gepa.adapters.default_adapter.default_adapter import DefaultAdapter, Evaluator
-from gepa.core.adapter import GEPAAdapter
-import typer
-from loguru import logger
-from dotenv import load_dotenv
-import litellm
-from gepa.api import optimize
+from pathlib import Path
 
+import litellm
+import typer
+from dotenv import load_dotenv
+from gepa.adapters.default_adapter.default_adapter import DefaultAdapter, Evaluator
+from gepa.api import optimize
+from gepa.core.adapter import GEPAAdapter
 from gnaf_common import get_seed_prompt, init_dataset_default_adapter, log_results
+from loguru import logger
+
 from library import llm, log
 
 assert load_dotenv(), "Failed to load .env file"
@@ -22,7 +23,8 @@ litellm.failure_callback = [llm.on_litellm_failure]
 
 """
 Case 2: Explicitly use builtin default GEPA adapter
-Explicitly sets `gepa.api.optimize` to use the builtin default GEPA adapter `gepa.adapters.default_adapter.DefaultAdapter`
+Explicitly sets `gepa.api.optimize` to use the builtin default GEPA adapter
+`gepa.adapters.default_adapter.DefaultAdapter`
 """
 
 
@@ -54,7 +56,7 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         trainset=trainset,
         valset=valset,
         adapter=active_adapter,  # Supply either `adapter` or `task_lm`, but not both
-        # task_lm="openai/gpt-4.1-mini",  # <-- This is the model being optimized (only used if `adapter` is not provided)
+        # task_lm="openai/gpt-4.1-mini",  # <-- Model being optimized (only used if `adapter` is not provided)
         max_metric_calls=max_metric_calls,  # <-- Set a budget
         reflection_lm="openai/gpt-5",  # <-- Use a strong model to reflect on mistakes and propose better prompts
         track_best_outputs=True,
