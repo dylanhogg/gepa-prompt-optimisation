@@ -172,6 +172,7 @@ def summarize_run(
             f.write(f"Is seed: {is_seed}\n")
             f.write(f"Score: {score}\n\n")
             # TODO: Add prompt lineage from gepa_result_dict/parents
+            f.write("---\n\n")
             f.write(f"{prompt['system_prompt']}\n")
 
     return summary

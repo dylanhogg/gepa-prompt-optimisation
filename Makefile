@@ -31,7 +31,8 @@ run-gnaf-explicit-default-adapter:
 
 run-gnaf-copy-default-adapter:
 	# Case 3: Copy of default GEPA adapter classes
-	# PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 100 --split-counts 20
+	# PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 100 --split-counts 20  # ~15 cents
+	# PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 200 --split-counts 40
 	PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 2 --split-counts 2
 
 test:
