@@ -50,7 +50,6 @@ def on_litellm_failure(kwargs, response, start, end):
     observability.save_llm_calls(run_id, llm_calls)
 
 
-# TODO: should we be using async callbacks? https://docs.litellm.ai/docs/observability/custom_callback#async-callback-functions
 litellm.input_callback = [on_litellm_input]
 litellm.success_callback = [on_litellm_success]
 litellm.failure_callback = [on_litellm_failure]
@@ -265,22 +264,30 @@ class CustomGEPAAdapter(GEPAAdapter[DefaultDataInst, DefaultTrajectory, DefaultR
 
 
 @app.command()
-def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric calls to make.")):
+def main(
+    max_metric_calls: int = typer.Option(1, help="Maximum number of metric calls to make."),
+    split_counts: int = typer.Option(2, help="Number of splits to make."),
+):
     """
     The core of this example has been adapted from the homepage example using gepa.examples.aime.init_dataset():
     https://github.com/gepa-ai/gepa/tree/v0.0.24?tab=readme-ov-file#simple-prompt-optimization-example
     """
 
+    script_path = Path(__file__).name
     logger.info(f"Starting GEPA run {__file__}")
-    logger.info(f"{max_metric_calls=}")
+    logger.info(f"{max_metric_calls=}, {split_counts=}")
     assert os.getenv("OPENAI_API_KEY") is not None, "OPENAI_API_KEY is not set"
     assert max_metric_calls > 0, "max_metric_calls must be greater than 0"
 
-    trainset, valset, testset = init_dataset_default_adapter()
+    trainset, valset, testset = init_dataset_default_adapter(split_counts=split_counts)
     seed_prompt = get_seed_prompt()
 
-    task_lm = "openai/gpt-4.1-mini"  # <-- This is the model being optimized
-    reflection_lm = "openai/gpt-5"  # <-- Use a strong model to reflect on mistakes and propose better prompts
+    # Model being optimized
+    task_lm = "openai/gpt-4.1-mini"
+
+    # Strong model to reflect on mistakes and propose better prompts
+    # reflection_lm = "openai/gpt-5"
+    reflection_lm = "openai/gpt-5.1"
 
     # evaluator: Evaluator | None = None,
     # evaluator = None
@@ -308,34 +315,45 @@ def main(max_metric_calls: int = typer.Option(1, help="Maximum number of metric 
         logger=log.CustomGepaLogger(),
         use_mlflow=True,  # Ref: https://dspy.ai/tutorials/gepa_facilitysupportanalyzer/
         mlflow_tracking_uri="http://localhost:5001",
-        mlflow_experiment_name=Path(__file__).name,
+        mlflow_experiment_name=script_path,
     )
 
     log_results(gepa_result, seed_prompt)
 
-    t1 = time.time() - t0
-    logger.info(f"Done in {t1:.2f} seconds.")
+    total_seconds = time.time() - t0
+    logger.info(f"Done in {total_seconds:.2f} seconds.")
 
     observability.save_llm_calls(run_id, llm_calls)
     summary_llm_calls = observability.summarize_llm_calls(
-        run_id, Path(__file__).name, llm_calls, task_lm, reflection_lm
+        run_id=run_id,
+        script_path=script_path,
+        llm_calls=llm_calls,
+        task_lm=task_lm,
+        reflection_lm=reflection_lm,
+        total_seconds=total_seconds,
     )
     logger.info(f"LLM calls summary:\n{summary_llm_calls}")
 
     summary_run = observability.summarize_run(
         run_id,
-        Path(__file__).name,
+        script_path,
         seed_prompt,
         trainset,
         valset,
         testset,
         max_metric_calls,
+        split_counts,
         task_lm,
         reflection_lm,
         gepa_result,
         summary_llm_calls,
     )
+
+    total_cost_usd = summary_llm_calls["total_cost_usd"]
+
     logger.info(f"Run summary:\n{summary_run}")
+    logger.info(f"Finished GEPA run {__file__}")
+    logger.info(f"{total_cost_usd=:.2f}, {total_seconds=:.2f} seconds, {max_metric_calls=}, {split_counts=}")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,9 @@ def save_llm_calls(run_id: str, llm_calls: list[dict]):
             json.dump(llm_calls, f, indent=2)
 
 
-def summarize_llm_calls(run_id: str, script_path: str, llm_calls: list[dict], task_lm: str, reflection_lm: str) -> dict:
+def summarize_llm_calls(
+    run_id: str, script_path: str, llm_calls: list[dict], task_lm: str, reflection_lm: str, total_seconds: float
+) -> dict:
     total_lm_calls = len(llm_calls)
     total_reflection_lm_calls = sum(
         1 for call in llm_calls if call["litellm_metadata"]["hidden_params"]["litellm_model_name"] == reflection_lm
@@ -78,6 +80,7 @@ def summarize_llm_calls(run_id: str, script_path: str, llm_calls: list[dict], ta
         "total_prompt_tokens": total_prompt_tokens,
         "total_completion_tokens": total_completion_tokens,
         "total_tokens": total_tokens,
+        "total_seconds": total_seconds,
     }
 
     os.makedirs(f"./runs/{run_id}", exist_ok=True)
@@ -95,6 +98,7 @@ def summarize_run(
     valset: list,
     testset: list,
     max_metric_calls: int,
+    split_counts: int,
     task_lm: str,
     reflection_lm: str,
     gepa_result: GEPAResult,
@@ -116,22 +120,32 @@ def summarize_run(
 
     gepa_result_dict = gepa_result.to_dict()
 
+    total_cost_usd = summary_llm_calls["total_cost_usd"]
+    total_task_lm_calls = summary_llm_calls["total_task_lm_calls"]
+    total_reflection_lm_calls = summary_llm_calls["total_reflection_lm_calls"]
+    run_name = (
+        f"{run_id}_metric{max_metric_calls}_split{split_counts}_"
+        f"task{total_task_lm_calls}_refl{total_reflection_lm_calls}_cost{total_cost_usd:.4f}"
+    )
+
     summary = {
         "run_id": run_id,
+        "run_name": run_name,
         "git_sha": git_sha,
         "git_branch": git_branch,
         "gepa_version": version("gepa"),
         "script_path": script_path,
-        "max_metric_calls": max_metric_calls,
         "task_lm": task_lm,
         "reflection_lm": reflection_lm,
+        "max_metric_calls": max_metric_calls,
+        "split_counts": split_counts,
         "len_trainset": len(trainset),
         "len_valset": len(valset),
         "len_testset": len(testset),
         "total_lm_calls": summary_llm_calls["total_lm_calls"],
-        "total_task_lm_calls": summary_llm_calls["total_task_lm_calls"],
-        "total_reflection_lm_calls": summary_llm_calls["total_reflection_lm_calls"],
-        "total_cost_usd": summary_llm_calls["total_cost_usd"],
+        "total_task_lm_calls": total_task_lm_calls,
+        "total_reflection_lm_calls": total_reflection_lm_calls,
+        "total_cost_usd": total_cost_usd,
         "total_task_lm_cost_usd": summary_llm_calls["total_task_lm_cost_usd"],
         "total_reflection_lm_cost_usd": summary_llm_calls["total_reflection_lm_cost_usd"],
         "gepa_seed_system_prompt": initial_seed_system_prompt,
@@ -143,10 +157,22 @@ def summarize_run(
         "gepa_candidates": candidates,
         "gepa_scores": val_aggregate_scores,
         "gepa_result_dict": gepa_result_dict,
+        "run_summary_version": 1,
     }
 
     os.makedirs(f"./runs/{run_id}", exist_ok=True)
     with open(f"./runs/{run_id}/run_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
+
+    for i, (prompt, score) in enumerate(zip(candidates, val_aggregate_scores)):
+        is_seed = initial_seed_system_prompt == prompt["system_prompt"]
+        with open(f"./runs/{run_id}/prompt_{i}.md", "w") as f:
+            f.write(f"# {run_name}\n\n")
+            f.write(f"Prompt number: {i}\n")
+            f.write(f"Is seed: {is_seed}\n")
+            f.write(f"Score: {score}\n\n")
+            # TODO: Add prompt lineage from gepa_result_dict/parents
+            f.write("---\n\n")
+            f.write(f"{prompt['system_prompt']}\n")
 
     return summary

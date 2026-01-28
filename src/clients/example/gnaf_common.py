@@ -6,7 +6,7 @@ from gepa.adapters.default_adapter.default_adapter import DefaultDataInst
 from loguru import logger
 
 
-def init_dataset_default_adapter(example_count: int = 100, split_counts: int = 2):
+def init_dataset_default_adapter(split_counts: int = 2):
     """
     https://www.kaggle.com/datasets/dylanhogg/geoscape-geocoded-national-address-file-gnaf'
 
@@ -16,7 +16,7 @@ def init_dataset_default_adapter(example_count: int = 100, split_counts: int = 2
 
     dataset_name = "dylanhogg/gnaf-2022-structured-training-100000-v0-instruct"
 
-    train_split: list[DefaultDataInst] = [
+    examples: list[DefaultDataInst] = [
         {
             # NOTE: GEPA's DefaultAdapter is typed to DefaultDataInst; force concrete `str` types
             # so Pyright doesn't infer dict[str, Unknown] from HuggingFace dataset `.get(...)`.
@@ -26,15 +26,16 @@ def init_dataset_default_adapter(example_count: int = 100, split_counts: int = 2
         }
         for x in load_dataset(dataset_name)["train"]
     ]
-    train_split = train_split[:example_count]
-    random.Random(0).shuffle(train_split)
+    example_count = split_counts * 3
+    examples = examples[:example_count]
+    random.Random(0).shuffle(examples)
     # test_split = [
     #     {"input": x["problem"], "answer": "### " + str(x["answer"])}
     #     for x in load_dataset("MathArena/aime_2025")["train"]
     # ]
 
-    trainset = train_split[: len(train_split) // 2]
-    valset = train_split[len(train_split) // 2 :]
+    trainset = examples[: len(examples) // 2]
+    valset = examples[len(examples) // 2 :]
     # testset = test_split * 5
     testset = []  # TODO
 
@@ -84,8 +85,11 @@ def get_seed_prompt():
 
     seed_prompt = {
         "system_prompt": f"You are a helpful assistant. You are given an Australian text address. "
-        f"The answer should be structured json with the Geoscape Geocoded National Address File "
+        "The answer must be structured JSON with Geoscape Geocoded National Address File "
         f"(GNAF) key fields: `{gnaf_fields_str}`. "
+        "The answer must be a valid JSON object, with no extra characters or whitespace. "
+        "Only include JSON keys that have been extracted from the input address. "
+        "If a key is not present in the input address, do not include it in the JSON object."
     }
 
     return seed_prompt
