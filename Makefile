@@ -22,18 +22,23 @@ run-example:
 	PYTHONPATH='./src' uv run src/clients/example/aime.py --max-metric-calls 1
 
 run-gnaf-implicit-default-adapter:
-	# Case 1: No adapter specified, implicity uses builtin GEPA default adapter
+	# Example Case 1: No adapter specified, implicity uses builtin GEPA default adapter
 	PYTHONPATH='./src' uv run src/clients/example/gnaf_implicit_default_adapter.py --max-metric-calls 2
 
 run-gnaf-explicit-default-adapter:
-	# Case 2: Explicitly use builtin default GEPA adapter
+	# Example Case 2: Explicitly use builtin default GEPA adapter
 	PYTHONPATH='./src' uv run src/clients/example/gnaf_explicit_default_adapter.py --max-metric-calls 2
 
 run-gnaf-copy-default-adapter:
-	# Case 3: Copy of default GEPA adapter classes
+	# Example Case 3: Copy of default GEPA adapter classes
 	# PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 100 --split-counts 20  # ~15 cents
 	# PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 200 --split-counts 40
 	PYTHONPATH='./src' uv run src/clients/example/gnaf_copy_default_adapter.py --max-metric-calls 2 --split-counts 2
+
+run-gnaf-custom-stickler-adapter:
+	# Custom codex version
+	# PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_custom_adapter.py --max-metric-calls 100 --split-counts 20
+	PYTHONPATH='./src' uv run src/clients/gnaf/gnaf_custom_adapter.py --max-metric-calls 2 --split-counts 2
 
 test:
 	PYTHONPATH='./src' uv run pytest -vv --capture=no tests
