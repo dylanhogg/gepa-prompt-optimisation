@@ -14,6 +14,7 @@ dependencies = [
     "mlflow>=3.8.1",
     "pydantic>=2.12.5",
     "python-dotenv>=1.2.1",
+    "stickler-eval>=0.1.4",
     "typer>=0.21.1",
 ]
 
